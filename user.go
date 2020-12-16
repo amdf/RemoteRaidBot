@@ -18,10 +18,25 @@ func (user_id User) IsRegistered() (result bool) {
 	return
 }
 
+//IsNotificationsEnabled bool
+func (user_id User) IsNotificationsEnabled() (result bool) {
+	rows, err := db.Query("SELECT notif FROM players where userid = $1", user_id)
+
+	if err == nil {
+		if rows.Next() {
+			rows.Scan(&result)
+		}
+		rows.Close()
+	} else {
+		fmt.Println(err)
+	}
+	return
+}
+
 //Register function
 func (user_id User) Register(pogoName string) {
-	if len(pogoName) > 255 {
-		rs := []rune(pogoName)
+	rs := []rune(pogoName)
+	if len(rs) > 255 {
 		pogoName = string(rs[:255])
 	}
 	str := `INSERT INTO players (userid, pogoname, notif) VALUES ($1, $2, $3)`
@@ -33,4 +48,10 @@ func (user_id User) Unregister() {
 	str := `DELETE FROM players WHERE userid = $1`
 
 	db.Exec(str, user_id)
+}
+
+//EnableNotifications function
+func (user_id User) EnableNotifications(enable bool) {
+	str := `UPDATE players SET notif = $1 WHERE userid = $2`
+	db.Exec(str, enable, user_id)
 }

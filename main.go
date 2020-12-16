@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
@@ -25,6 +24,7 @@ var db *sqlx.DB
 var bot *tgbotapi.BotAPI
 var sender BotSender
 var sendUpdates = make(map[int64]bool)
+var wantPogoname = make(map[User]bool)
 
 func testNotif() {
 	sec := time.NewTicker(time.Second)
@@ -70,18 +70,20 @@ func main() {
 	updates, err := bot.GetUpdatesChan(u)
 
 	sender.Init(bot)
-	wantPogoname := make(map[User]bool)
 
 	for update := range updates {
 
 		if update.CallbackQuery != nil {
-			switch update.CallbackQuery.Data {
-			default:
-				bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, update.CallbackQuery.Data))
-				bot.Send(tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "ответ на callback?"))
-			}
+			log.Printf("[%s]~ %s\r\n", update.CallbackQuery.From.UserName, update.CallbackQuery.Data)
+
+			userID := User(update.CallbackQuery.From.ID)
+			chatID := update.CallbackQuery.Message.Chat.ID
+
+			sender.ProcessChat(chatID)
+			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, update.CallbackQuery.Data))
+			processCommand(userID, chatID, update.CallbackQuery.Data)
 		}
-		if update.Message != nil { // ignore any non-Message Updates
+		if update.Message != nil {
 
 			log.Printf("[%s] %s\r\n", update.Message.From.UserName, update.Message.Text)
 
@@ -89,60 +91,8 @@ func main() {
 			chatID := update.Message.Chat.ID
 
 			sender.ProcessChat(chatID)
-
-			switch update.Message.Text {
-			case "/start":
-				if userID.IsRegistered() {
-					sender.SendText(chatID, "вы зарегистрированы")
-				} else {
-					sender.SendText(chatID, "вы не зарегистрированы")
-				}
-			case "/reg":
-				sender.SendText(chatID, "Введите ваше имя в Pokemon Go:")
-				wantPogoname[userID] = true
-			case "/unreg":
-				userID.Unregister()
-				if !userID.IsRegistered() {
-					sender.SendText(chatID, "теперь вы не зарегистрированы")
-				} else {
-					sender.SendText(chatID, "ошибка удаления регистрации")
-				}
-			case "/stop":
-				sender.SendText(chatID, "стоп")
-			case "/r3start":
-				sender.SendText(chatID, "Рестарт.")
-
-				bot.StopReceivingUpdates()
-				cmd := exec.Command(os.Args[0], "")
-				cmd.Start()
-				os.Exit(0)
-			default:
-				if wantPogoname[userID] {
-					userID.Register(update.Message.Text)
-					if userID.IsRegistered() {
-						sender.SendText(chatID, "Вы успешно зарегистрировались под именем "+update.Message.Text)
-					} else {
-						sender.SendText(chatID, "Ошибка регистрации")
-					}
-					delete(wantPogoname, userID)
-				} else {
-					sender.SendText(chatID, "Команда не распознана")
-				}
-			}
+			processCommand(userID, chatID, update.Message.Text)
 
 		}
 	}
 }
-
-/*
-//msg.ReplyToMessageID = update.Message.MessageID
-
-	msg.Text = "commands:"
-	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("настроить", "/settings"), //TODO: process callbacks
-			tgbotapi.NewInlineKeyboardButtonData("перевести", "/convert"),
-		),
-	)
-	bot.Send(msg)
-*/
