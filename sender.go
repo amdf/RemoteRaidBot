@@ -24,15 +24,15 @@ const (
 //BotSender sends msgs to users with telegram bot api limits
 type BotSender struct {
 	bot            *tgbotapi.BotAPI
-	senderChannels map[int64]chan tgbotapi.MessageConfig
-	commonChannel  chan tgbotapi.MessageConfig
+	senderChannels map[int64]chan tgbotapi.Chattable
+	commonChannel  chan tgbotapi.Chattable
 }
 
 //Init function
 func (bs *BotSender) Init(botapi *tgbotapi.BotAPI) {
 	bs.bot = botapi
-	bs.senderChannels = make(map[int64]chan tgbotapi.MessageConfig, maxUsers)
-	bs.commonChannel = make(chan tgbotapi.MessageConfig, maxTotalQueuedMessages)
+	bs.senderChannels = make(map[int64]chan tgbotapi.Chattable, maxUsers)
+	bs.commonChannel = make(chan tgbotapi.Chattable, maxTotalQueuedMessages)
 	go bs.processAllMessages()
 }
 
@@ -43,14 +43,14 @@ func (bs *BotSender) ProcessChat(chatID int64) {
 	}
 	_, exists := bs.senderChannels[chatID]
 	if !exists {
-		bs.senderChannels[chatID] = make(chan tgbotapi.MessageConfig, maxQueuedMessages)
+		bs.senderChannels[chatID] = make(chan tgbotapi.Chattable, maxQueuedMessages)
 		go bs.processMessagesToChat(chatID)
 	}
 }
 
 //SendMessage function
-func (bs BotSender) SendMessage(newmsg tgbotapi.MessageConfig) (err error) {
-	ch, ok := bs.senderChannels[newmsg.ChatID]
+func (bs BotSender) SendMessage(chatID int64, newmsg tgbotapi.Chattable) (err error) {
+	ch, ok := bs.senderChannels[chatID]
 	if ok {
 		ch <- newmsg
 	} else {
@@ -62,8 +62,17 @@ func (bs BotSender) SendMessage(newmsg tgbotapi.MessageConfig) (err error) {
 //SendText function
 func (bs BotSender) SendText(chatID int64, text string) {
 	msg := tgbotapi.NewMessage(chatID, text)
+
 	//msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
-	bs.SendMessage(msg)
+	bs.SendMessage(chatID, msg)
+}
+
+//EditText function
+func (bs BotSender) EditText(chatID int64, msgID int, text string) {
+	msg := tgbotapi.NewEditMessageText(chatID, msgID, text)
+
+	//msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+	bs.SendMessage(chatID, msg)
 }
 
 func (bs BotSender) processAllMessages() {

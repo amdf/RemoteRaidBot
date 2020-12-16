@@ -5,18 +5,21 @@ import (
 )
 
 func menuSettings(userID User, chatID int64) {
-
-	msg := tgbotapi.NewMessage(chatID, "Действия:")
-	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+	var menuText = "Действия:"
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Вкл. уведомления", "/notif on"),
 			tgbotapi.NewInlineKeyboardButtonData("Выкл. уведомления", "/notif off"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("удалиться из бота", "/unreg"),
+			tgbotapi.NewInlineKeyboardButtonData("реакция на текст", "/testedit"),
 		),
 	)
-	sender.SendMessage(msg)
+
+	msg := tgbotapi.NewMessage(chatID, menuText)
+	msg.ReplyMarkup = keyboard
+	sender.SendMessage(chatID, msg)
 }
 
 func showRegisterButton(chatID int64) {
@@ -26,5 +29,5 @@ func showRegisterButton(chatID int64) {
 			tgbotapi.NewInlineKeyboardButtonData("начать", "/reg"),
 		),
 	)
-	sender.SendMessage(msg)
+	sender.SendMessage(chatID, msg)
 }

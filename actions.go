@@ -5,13 +5,17 @@ import (
 	"os/exec"
 )
 
-func processCommand(userID User, chatID int64, cmdText string) {
+func processCommand(userID User, chatID int64, msgID *int, cmdText string) {
 	switch cmdText {
 	case "/start":
 		if userID.IsRegistered() {
 			menuSettings(userID, chatID)
 		} else {
 			showRegisterButton(chatID)
+		}
+	case "/raidstart":
+		if nil != msgID {
+			//showRaid(userID, chatID, *msgID)
 		}
 	case "/reg":
 		sender.SendText(chatID, "Введите ваше имя в Pokemon Go:")

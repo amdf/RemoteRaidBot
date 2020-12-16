@@ -78,10 +78,10 @@ func main() {
 
 			userID := User(update.CallbackQuery.From.ID)
 			chatID := update.CallbackQuery.Message.Chat.ID
-
+			msgID := update.CallbackQuery.Message.MessageID
 			sender.ProcessChat(chatID)
 			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, update.CallbackQuery.Data))
-			processCommand(userID, chatID, update.CallbackQuery.Data)
+			processCommand(userID, chatID, &msgID, update.CallbackQuery.Data)
 		}
 		if update.Message != nil {
 
@@ -91,7 +91,7 @@ func main() {
 			chatID := update.Message.Chat.ID
 
 			sender.ProcessChat(chatID)
-			processCommand(userID, chatID, update.Message.Text)
+			processCommand(userID, chatID, nil, update.Message.Text)
 
 		}
 	}
