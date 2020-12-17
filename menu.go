@@ -12,8 +12,8 @@ func menuSettings(userID User, chatID int64) {
 			tgbotapi.NewInlineKeyboardButtonData("Выкл. уведомления", "/notif off"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("новый рейд", "/newraid"),
 			tgbotapi.NewInlineKeyboardButtonData("удалиться из бота", "/unreg"),
-			tgbotapi.NewInlineKeyboardButtonData("реакция на текст", "/testedit"),
 		),
 	)
 

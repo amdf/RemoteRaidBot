@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 )
 
 func processCommand(userID User, chatID int64, msgID *int, cmdText string) {
@@ -13,9 +15,14 @@ func processCommand(userID User, chatID int64, msgID *int, cmdText string) {
 		} else {
 			showRegisterButton(chatID)
 		}
-	case "/raidstart":
-		if nil != msgID {
-			//showRaid(userID, chatID, *msgID)
+	case "/newraid":
+		newraid, err := NewRaid(userID, chatID, "(здесь нужно будет ввести инфо)")
+		ok := (err == nil)
+		if ok {
+			ok = newraid.ShowStart()
+		}
+		if !ok {
+			sender.SendText(chatID, "Не удалось создать рейд")
 		}
 	case "/reg":
 		sender.SendText(chatID, "Введите ваше имя в Pokemon Go:")
@@ -51,16 +58,41 @@ func processCommand(userID User, chatID int64, msgID *int, cmdText string) {
 		cmd.Start()
 		os.Exit(0)
 	default:
-		if wantPogoname[userID] {
-			userID.Register(cmdText)
-			if userID.IsRegistered() {
-				sender.SendText(chatID, "Вы успешно зарегистрировались под именем "+cmdText)
-			} else {
-				sender.SendText(chatID, "Ошибка регистрации")
+		if cmdText[0] == '/' { //command?
+			cmdArgs := strings.Split(cmdText, " ")
+			if len(cmdArgs) > 1 { //command with arguments
+				switch cmdArgs[0] {
+				case "/raidstart":
+					if msgID != nil {
+						r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
+						if err == nil {
+							//correct raid number
+							raid := Raid(r)
+							if !raid.Started() {
+								raid.Start(*msgID)
+							} else {
+								sender.SendText(chatID, "Рейд уже стартовал!")
+							}
+						} else {
+							sender.SendText(chatID, "Неправильный аргумент команды")
+						}
+					} else {
+						sender.SendText(chatID, "Неверное использование команды")
+					}
+				}
 			}
-			delete(wantPogoname, userID)
-		} else {
-			menuSettings(userID, chatID)
+		} else { //some text?
+			if wantPogoname[userID] { //answer to pokemon username request?
+				userID.Register(cmdText)
+				if userID.IsRegistered() {
+					sender.SendText(chatID, "Вы успешно зарегистрировались под именем "+cmdText)
+				} else {
+					sender.SendText(chatID, "Ошибка регистрации")
+				}
+				delete(wantPogoname, userID)
+			} else { //something else?
+				menuSettings(userID, chatID)
+			}
 		}
 	}
 }
