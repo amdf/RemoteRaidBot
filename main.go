@@ -70,6 +70,8 @@ func main() {
 
 	sender.Init(bot)
 
+	go updateAdminsInfo()
+
 	for update := range updates {
 
 		if update.CallbackQuery != nil {

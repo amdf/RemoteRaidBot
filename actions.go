@@ -68,8 +68,6 @@ func processCommand(userID User, chatID int64, msgID *int, cmdText string) {
 		} else {
 			sender.SendText(chatID, "ошибка удаления регистрации")
 		}
-	case "/stop":
-		sender.SendText(chatID, "стоп")
 	case "/notif on":
 		userID.EnableNotifications(true)
 		if userID.IsNotificationsEnabled() {
@@ -84,7 +82,7 @@ func processCommand(userID User, chatID int64, msgID *int, cmdText string) {
 		} else {
 			sender.SendText(chatID, "Уведомления включены. Бот будет присылать информацию о новых рейдах")
 		}
-	case "/r3start":
+	case "/r3start": //debug
 		sender.SendText(chatID, "Рестарт.")
 
 		bot.StopReceivingUpdates()
