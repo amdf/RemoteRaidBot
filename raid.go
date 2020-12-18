@@ -103,6 +103,21 @@ func (raid Raid) GetMsgID() (result int, err error) {
 	return
 }
 
+//GetRaidText return raid info
+func (raid Raid) GetRaidText() (result string, err error) {
+	rows, dberr := db.Query("SELECT raid_info FROM raids where raid_id = $1", raid)
+
+	if dberr == nil {
+		if rows.Next() {
+			dberr = rows.Scan(&result)
+		}
+		rows.Close()
+	}
+
+	err = dberr
+	return
+}
+
 //GetUserID return raid admin's user id
 func (raid Raid) GetUserID() (result int, err error) {
 	rows, dberr := db.Query("SELECT user_id FROM raids where raid_id = $1", raid)
@@ -118,12 +133,13 @@ func (raid Raid) GetUserID() (result int, err error) {
 	return
 }
 
-//ShowStart shows start infobox to raid admin
-func (raid Raid) ShowStart() bool {
+//ShowConfirm shows confirmation infobox to raid admin
+func (raid Raid) ShowConfirm() bool {
 
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Создать", "/raidstart "+raid.String()),
+			tgbotapi.NewInlineKeyboardButtonData("Подтвердить", "/raidstart "+raid.String()),
+			tgbotapi.NewInlineKeyboardButtonData("Отмена", "/raidremove "+raid.String()),
 		),
 	)
 
@@ -132,11 +148,17 @@ func (raid Raid) ShowStart() bool {
 		return false
 	}
 
-	msg := tgbotapi.NewMessage(chatID, "Создать рейд:")
+	msg := tgbotapi.NewMessage(chatID, "Информация введена! Теперь нажмите кнопку для подтверждения:")
 	msg.ReplyMarkup = keyboard
 	sender.SendMessage(chatID, msg)
 
 	return true
+}
+
+//Delete raid completely
+func (raid Raid) Delete() {
+	str := `DELETE FROM raids where raid_id = $1`
+	db.Exec(str, raid)
 }
 
 //Start stores msgid of admin's control panel and makes raid active
@@ -151,14 +173,15 @@ func (raid Raid) Start(msgID int) {
 func (raid Raid) ShowControls() {
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("кнопка", "/nothing "+raid.String()),
+			tgbotapi.NewInlineKeyboardButtonData("Удалить рейд", "/raidremove "+raid.String()),
 		),
 	)
 	chatID, err1 := raid.GetChatID()
 	msgID, err2 := raid.GetMsgID()
+	raidText, err3 := raid.GetRaidText()
 
-	if nil == err1 && nil == err2 {
-		msg := tgbotapi.NewEditMessageText(chatID, msgID, "(TODO: здесь инфа о рейде)")
+	if nil == err1 && nil == err2 && nil == err3 {
+		msg := tgbotapi.NewEditMessageText(chatID, msgID, raidText)
 		msg.ReplyMarkup = &keyboard
 		sender.SendMessage(chatID, msg)
 	} else {

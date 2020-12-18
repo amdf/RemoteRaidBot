@@ -24,7 +24,6 @@ var db *sqlx.DB
 var bot *tgbotapi.BotAPI
 var sender BotSender
 var sendUpdates = make(map[int64]bool)
-var wantPogoname = make(map[User]bool)
 
 func testNotif() {
 	sec := time.NewTicker(time.Second)

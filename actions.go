@@ -7,6 +7,46 @@ import (
 	"strings"
 )
 
+var requestPogoName = make(map[User]bool)
+var requestRaidInfo = make(map[User]bool)
+
+func processCommandWithArgs(userID User, chatID int64, msgID *int, cmdArgs []string) {
+
+	switch cmdArgs[0] {
+	case "/raidstart":
+		if msgID != nil {
+			r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
+			if err == nil {
+				raid := Raid(r)
+				if !raid.Started() {
+					raid.Start(*msgID)
+				} else {
+					sender.SendText(chatID, "Рейд уже стартовал!")
+				}
+			} else {
+				sender.SendText(chatID, "Неправильный аргумент команды")
+			}
+		} else {
+			sender.SendText(chatID, "Неверное использование команды")
+		}
+	case "/raidremove":
+		if msgID != nil {
+			r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
+			if err == nil {
+				raid := Raid(r)
+				raid.Delete()
+				str := "Рейд удалён. Введите (или нажмите) /start чтобы начать заново"
+				sender.EditText(chatID, *msgID, str)
+			} else {
+				sender.SendText(chatID, "Неправильный аргумент команды")
+			}
+		} else {
+			sender.SendText(chatID, "Неверное использование команды")
+		}
+	}
+
+}
+
 func processCommand(userID User, chatID int64, msgID *int, cmdText string) {
 	switch cmdText {
 	case "/start":
@@ -16,17 +56,11 @@ func processCommand(userID User, chatID int64, msgID *int, cmdText string) {
 			showRegisterButton(chatID)
 		}
 	case "/newraid":
-		newraid, err := NewRaid(userID, chatID, "(здесь нужно будет ввести инфо)")
-		ok := (err == nil)
-		if ok {
-			ok = newraid.ShowStart()
-		}
-		if !ok {
-			sender.SendText(chatID, "Не удалось создать рейд")
-		}
+		sender.SendText(chatID, "Введите информацию о рейде в свободной форме:")
+		requestRaidInfo[userID] = true
 	case "/reg":
 		sender.SendText(chatID, "Введите ваше имя в Pokemon Go:")
-		wantPogoname[userID] = true
+		requestPogoName[userID] = true
 	case "/unreg":
 		userID.Unregister()
 		if !userID.IsRegistered() {
@@ -61,38 +95,43 @@ func processCommand(userID User, chatID int64, msgID *int, cmdText string) {
 		if cmdText[0] == '/' { //command?
 			cmdArgs := strings.Split(cmdText, " ")
 			if len(cmdArgs) > 1 { //command with arguments
-				switch cmdArgs[0] {
-				case "/raidstart":
-					if msgID != nil {
-						r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
-						if err == nil {
-							//correct raid number
-							raid := Raid(r)
-							if !raid.Started() {
-								raid.Start(*msgID)
-							} else {
-								sender.SendText(chatID, "Рейд уже стартовал!")
-							}
-						} else {
-							sender.SendText(chatID, "Неправильный аргумент команды")
-						}
-					} else {
-						sender.SendText(chatID, "Неверное использование команды")
-					}
-				}
+				processCommandWithArgs(userID, chatID, msgID, cmdArgs)
+			} else {
+				sender.SendText(chatID, "Неизвестная команда")
 			}
 		} else { //some text?
-			if wantPogoname[userID] { //answer to pokemon username request?
-				userID.Register(cmdText)
-				if userID.IsRegistered() {
-					sender.SendText(chatID, "Вы успешно зарегистрировались под именем "+cmdText)
-				} else {
-					sender.SendText(chatID, "Ошибка регистрации")
-				}
-				delete(wantPogoname, userID)
-			} else { //something else?
-				menuSettings(userID, chatID)
+			if !processAnswer(userID, chatID, msgID, cmdText) { //plain text - possible answer to request
+				menuSettings(userID, chatID) //if not, show menu
 			}
 		}
 	}
+}
+
+//returns true if cmdText was processed
+func processAnswer(userID User, chatID int64, msgID *int, cmdText string) bool {
+	if requestPogoName[userID] {
+		userID.Register(cmdText)
+		if userID.IsRegistered() {
+			sender.SendText(chatID, "Вы успешно зарегистрировались под именем "+cmdText)
+		} else {
+			sender.SendText(chatID, "Ошибка регистрации")
+		}
+		delete(requestPogoName, userID)
+		return true
+	}
+
+	if requestRaidInfo[userID] {
+		newraid, err := NewRaid(userID, chatID, cmdText)
+		ok := (err == nil)
+		if ok {
+			ok = newraid.ShowConfirm()
+		}
+		if !ok {
+			sender.SendText(chatID, "Не удалось создать рейд")
+		}
+		delete(requestRaidInfo, userID)
+		return true
+	}
+
+	return false
 }
