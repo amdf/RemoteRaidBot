@@ -53,3 +53,21 @@ func updateAdminsInfo() {
 		time.Sleep(time.Second)
 	}
 }
+
+//GetAdminChats returns admin's chat IDs (for active raids)
+func GetAdminChats() (adminChats []int64, err error) {
+	err = db.Select(&adminChats, "SELECT DISTINCT chat_id FROM raids")
+	return
+}
+
+//GetVotersChats returns voter's chat IDs (for active raids)
+func GetVotersChats() (votersChats []int64, err error) {
+	err = db.Select(&votersChats, "SELECT DISTINCT chat_id FROM votes")
+	return
+}
+
+//GetAllChats returns all chat IDs (for active raids)
+func GetAllChats() (allChats []int64, err error) {
+	err = db.Select(&allChats, "SELECT DISTINCT chat_id FROM raids FULL OUTER JOIN votes USING (chat_id)")
+	return
+}

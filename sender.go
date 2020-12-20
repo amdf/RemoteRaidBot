@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"runtime"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 
 const (
 	errNilBotsender = "nil BotSender"
+	errNilBotAPI    = "nil botapi"
 	errNoChannel    = "no channel for chat"
 )
 
@@ -28,11 +30,22 @@ type BotSender struct {
 	commonChannel  chan tgbotapi.Chattable
 }
 
-//Init function
-func (bs *BotSender) Init(botapi *tgbotapi.BotAPI) {
+//Init function. Argument "chats" can be nil (should populate chats later with ProcessChat).
+func (bs *BotSender) Init(botapi *tgbotapi.BotAPI, chats []int64) {
+	if nil == botapi {
+		panic(errNilBotAPI)
+	}
+	if nil == bs {
+		panic(errNilBotsender)
+	}
 	bs.bot = botapi
 	bs.senderChannels = make(map[int64]chan tgbotapi.Chattable, maxUsers)
 	bs.commonChannel = make(chan tgbotapi.Chattable, maxTotalQueuedMessages)
+	if chats != nil {
+		for _, chatID := range chats {
+			bs.ProcessChat(chatID)
+		}
+	}
 	go bs.processAllMessages()
 }
 
@@ -63,29 +76,19 @@ func (bs BotSender) SendMessage(chatID int64, newmsg tgbotapi.Chattable) (err er
 func (bs BotSender) SendText(chatID int64, text string) {
 	msg := tgbotapi.NewMessage(chatID, text)
 
-	//msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
-	bs.SendMessage(chatID, msg)
+	err := bs.SendMessage(chatID, msg)
+	if err != nil {
+		fmt.Printf("SendText error: %s\r\n", err.Error())
+	}
 }
 
 //EditText function
 func (bs BotSender) EditText(chatID int64, msgID int, text string) {
 	msg := tgbotapi.NewEditMessageText(chatID, msgID, text)
 
-	//msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
-	bs.SendMessage(chatID, msg)
-}
-
-func (bs BotSender) processAllMessages() {
-	opened := true
-	for opened {
-		select {
-		case msg, more := <-bs.commonChannel:
-			opened = more
-			bs.bot.Send(msg)
-			time.Sleep(limitAllChats)
-		default:
-		}
-		runtime.Gosched()
+	err := bs.SendMessage(chatID, msg)
+	if err != nil {
+		fmt.Printf("EditText error: %s\r\n", err.Error())
 	}
 }
 
@@ -103,5 +106,19 @@ func (bs BotSender) processMessagesToChat(chatID int64) {
 			}
 			runtime.Gosched()
 		}
+	}
+}
+
+func (bs BotSender) processAllMessages() {
+	opened := true
+	for opened {
+		select {
+		case msg, more := <-bs.commonChannel:
+			opened = more
+			bs.bot.Send(msg)
+			time.Sleep(limitAllChats)
+		default:
+		}
+		runtime.Gosched()
 	}
 }

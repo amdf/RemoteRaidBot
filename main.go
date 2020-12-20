@@ -68,7 +68,13 @@ func main() {
 
 	updates, err := bot.GetUpdatesChan(u)
 
-	sender.Init(bot)
+	if err != nil {
+		panic("bot.GetUpdatesChan()")
+	}
+
+	var restoreChats []int64
+	restoreChats, _ = GetAllChats()
+	sender.Init(bot, restoreChats)
 
 	go updateAdminsInfo()
 
