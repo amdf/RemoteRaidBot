@@ -37,7 +37,9 @@ func updateAdminsInfo() {
 
 						if raidHeader.MsgID.Valid { //has admin interface
 							fmt.Printf("send update to raid %d\r\n", raidHeader.RaidID)
-							sender.EditText(raidHeader.ChatID, int(raidHeader.MsgID.Int64), raidHeader.RaidInfo) //send update to admin
+							//sender.EditText(raidHeader.ChatID, int(raidHeader.MsgID.Int64), raidHeader.RaidInfo) //send update to admin
+							r := Raid(raidHeader.RaidID)
+							r.ShowControls()
 						} else {
 							fmt.Printf("raid %d is not yet started\r\n", raidHeader.RaidID)
 						}

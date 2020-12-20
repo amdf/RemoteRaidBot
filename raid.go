@@ -173,16 +173,26 @@ func (raid Raid) Start(msgID int) {
 func (raid Raid) ShowControls() {
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Вживую", "/joinlive "+raid.String()),
+			tgbotapi.NewInlineKeyboardButtonData("Достаю удалённо", "/joinremote "+raid.String()),
 			tgbotapi.NewInlineKeyboardButtonData("Удалить рейд", "/raidremove "+raid.String()),
 		),
 	)
 	chatID, err1 := raid.GetChatID()
 	msgID, err2 := raid.GetMsgID()
-	raidText, err3 := raid.GetRaidText()
+	raidInfo, err3 := raid.GetRaidText()
+	var raidText string
+
+	raidText = "<b>Управление рейдом:</b>\r\n" +
+		raidInfo +
+		"\r\nУчастники:" +
+		"\r\n  здесь участники" +
+		"\r\nДействия:"
 
 	if nil == err1 && nil == err2 && nil == err3 {
 		msg := tgbotapi.NewEditMessageText(chatID, msgID, raidText)
 		msg.ReplyMarkup = &keyboard
+		msg.ParseMode = tgbotapi.ModeHTML
 		sender.SendMessage(chatID, msg)
 	} else {
 		sender.SendText(chatID, "ошибка отображения информации о рейде")
