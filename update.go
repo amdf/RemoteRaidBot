@@ -73,3 +73,9 @@ func GetAllChats() (allChats []int64, err error) {
 	err = db.Select(&allChats, "SELECT DISTINCT chat_id FROM raids FULL OUTER JOIN votes USING (chat_id)")
 	return
 }
+
+//GetSubscribersChats returns chat IDs of users who wants to receive invites to new raids
+func GetSubscribersChats() (subscribersChats []int64, err error) {
+	err = db.Select(&subscribersChats, "SELECT DISTINCT user_id FROM players WHERE notif = true")
+	return
+}

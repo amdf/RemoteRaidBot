@@ -23,11 +23,17 @@ const (
 	maxTotalQueuedMessages = 100
 )
 
+//BotMessage contains a message to send and a channel to place info about new message
+type BotMessage struct {
+	msg             tgbotapi.Chattable
+	callbackChannel chan<- ChatAndMessage
+}
+
 //BotSender sends msgs to users with telegram bot api limits
 type BotSender struct {
 	bot            *tgbotapi.BotAPI
-	senderChannels map[int64]chan tgbotapi.Chattable
-	commonChannel  chan tgbotapi.Chattable
+	senderChannels map[int64]chan BotMessage
+	commonChannel  chan BotMessage
 }
 
 //Init function. Argument "chats" can be nil (should populate chats later with ProcessChat).
@@ -39,8 +45,8 @@ func (bs *BotSender) Init(botapi *tgbotapi.BotAPI, chats []int64) {
 		panic(errNilBotsender)
 	}
 	bs.bot = botapi
-	bs.senderChannels = make(map[int64]chan tgbotapi.Chattable, maxUsers)
-	bs.commonChannel = make(chan tgbotapi.Chattable, maxTotalQueuedMessages)
+	bs.senderChannels = make(map[int64]chan BotMessage, maxUsers)
+	bs.commonChannel = make(chan BotMessage, maxTotalQueuedMessages)
 	if chats != nil {
 		for _, chatID := range chats {
 			bs.ProcessChat(chatID)
@@ -56,7 +62,7 @@ func (bs *BotSender) ProcessChat(chatID int64) {
 	}
 	_, exists := bs.senderChannels[chatID]
 	if !exists {
-		bs.senderChannels[chatID] = make(chan tgbotapi.Chattable, maxQueuedMessages)
+		bs.senderChannels[chatID] = make(chan BotMessage, maxQueuedMessages)
 		go bs.processMessagesToChat(chatID)
 	}
 }
@@ -65,7 +71,20 @@ func (bs *BotSender) ProcessChat(chatID int64) {
 func (bs BotSender) SendMessage(chatID int64, newmsg tgbotapi.Chattable) (err error) {
 	ch, ok := bs.senderChannels[chatID]
 	if ok {
-		ch <- newmsg
+		msgToSend := BotMessage{msg: newmsg}
+		ch <- msgToSend
+	} else {
+		err = errors.New(errNoChannel)
+	}
+	return
+}
+
+//SendMessageWithCallback function. Answer will return to callback channel
+func (bs BotSender) SendMessageWithCallback(chatID int64, newmsg tgbotapi.Chattable, callback chan<- ChatAndMessage) (err error) {
+	ch, ok := bs.senderChannels[chatID]
+	if ok {
+		msgToSend := BotMessage{msg: newmsg, callbackChannel: callback}
+		ch <- msgToSend
 	} else {
 		err = errors.New(errNoChannel)
 	}
@@ -113,9 +132,13 @@ func (bs BotSender) processAllMessages() {
 	opened := true
 	for opened {
 		select {
-		case msg, more := <-bs.commonChannel:
+		case botMsg, more := <-bs.commonChannel:
 			opened = more
-			bs.bot.Send(msg)
+			msgSent, err := bs.bot.Send(botMsg.msg)
+			if err == nil && botMsg.callbackChannel != nil {
+				cm := ChatAndMessage{MsgID: msgSent.MessageID, ChatID: msgSent.Chat.ID}
+				go func() { botMsg.callbackChannel <- cm }()
+			}
 			time.Sleep(limitAllChats)
 		default:
 		}

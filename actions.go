@@ -41,9 +41,8 @@ func processCommandWithArgs(userID User, chatID int64, msgID *int, cmdArgs []str
 			r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
 			if err == nil {
 				raid := Raid(r)
-				raid.Delete()
-				str := "Рейд удалён. Введите (или нажмите) /start чтобы начать заново"
-				sender.EditText(chatID, *msgID, str)
+				raid.Stop()
+
 			} else {
 				sender.SendText(chatID, "Неправильный аргумент команды")
 			}

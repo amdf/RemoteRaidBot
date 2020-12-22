@@ -73,33 +73,42 @@ func main() {
 	}
 
 	var restoreChats []int64
-	restoreChats, _ = GetAllChats()
-	sender.Init(bot, restoreChats)
+	restoreChats, errAllChats := GetAllChats()
+	if errAllChats == nil {
+		fmt.Printf("Begin process %d admins and voters chats\r\n", len(restoreChats))
+		sender.Init(bot, restoreChats)
+	}
+
+	subChats, errSubChats := GetSubscribersChats()
+	if errSubChats == nil {
+		fmt.Printf("Begin process additional %d subscriber chats\r\n", len(subChats))
+		for _, subChatID := range subChats {
+			sender.ProcessChat(subChatID)
+		}
+	}
 
 	go updateAdminsInfo()
 
 	for update := range updates {
 
 		if update.CallbackQuery != nil {
-			log.Printf("[%s]~ %s\r\n", update.CallbackQuery.From.UserName, update.CallbackQuery.Data)
-
 			userID := User(update.CallbackQuery.From.ID)
 			chatID := update.CallbackQuery.Message.Chat.ID
 			msgID := update.CallbackQuery.Message.MessageID
 			sender.ProcessChat(chatID)
 			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, update.CallbackQuery.Data))
 			processCommand(userID, chatID, &msgID, update.CallbackQuery.Data)
+
+			log.Printf("%d:%d [%s]~ %s\r\n", chatID, msgID, update.CallbackQuery.From.UserName, update.CallbackQuery.Data)
 		}
 		if update.Message != nil {
-
-			log.Printf("[%s] %s\r\n", update.Message.From.UserName, update.Message.Text)
-
 			userID := User(update.Message.From.ID)
 			chatID := update.Message.Chat.ID
+			msgID := update.Message.MessageID
 
 			sender.ProcessChat(chatID)
 			processCommand(userID, chatID, nil, update.Message.Text)
-
+			log.Printf("%d:%d [%s] %s\r\n", chatID, msgID, update.Message.From.UserName, update.Message.Text)
 		}
 	}
 }
