@@ -79,15 +79,15 @@ func main() {
 		sender.Init(bot, restoreChats)
 	}
 
-	subChats, errSubChats := GetSubscribersChats()
-	if errSubChats == nil {
-		fmt.Printf("Begin process additional %d subscriber chats\r\n", len(subChats))
-		for _, subChatID := range subChats {
-			sender.ProcessChat(subChatID)
+	subUsers, errSubUsers := GetSubscribers()
+	if errSubUsers == nil {
+		fmt.Printf("Begin process additional %d subscriber chats\r\n", len(subUsers))
+		for _, subUserID := range subUsers {
+			sender.ProcessChat(int64(subUserID))
 		}
 	}
 
-	go updateAdminsInfo()
+	go updateUserInfo()
 
 	for update := range updates {
 

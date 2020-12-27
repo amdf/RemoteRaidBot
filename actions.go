@@ -49,6 +49,42 @@ func processCommandWithArgs(userID User, chatID int64, msgID *int, cmdArgs []str
 		} else {
 			sender.SendText(chatID, "Неверное использование команды")
 		}
+	case "/joininvite":
+		if msgID != nil {
+			r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
+			if err == nil {
+				raid := Raid(r)
+				userID.Vote(raid, "invite")
+			} else {
+				sender.SendText(chatID, "Неправильный аргумент команды")
+			}
+		} else {
+			sender.SendText(chatID, "Неверное использование команды")
+		}
+	case "/joinremote":
+		if msgID != nil {
+			r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
+			if err == nil {
+				raid := Raid(r)
+				userID.Vote(raid, "remote")
+			} else {
+				sender.SendText(chatID, "Неправильный аргумент команды")
+			}
+		} else {
+			sender.SendText(chatID, "Неверное использование команды")
+		}
+	case "/joinlive":
+		if msgID != nil {
+			r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
+			if err == nil {
+				raid := Raid(r)
+				userID.Vote(raid, "live")
+			} else {
+				sender.SendText(chatID, "Неправильный аргумент команды")
+			}
+		} else {
+			sender.SendText(chatID, "Неверное использование команды")
+		}
 	}
 
 }

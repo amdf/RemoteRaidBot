@@ -1,81 +1,62 @@
 package main
 
 import (
-	"database/sql"
-	"fmt"
 	"time"
 )
 
-//AdminRaidInfo struct
-type AdminRaidInfo struct {
-	RaidInfo  string        `db:"raid_info"`
-	AdminName string        `db:"admin_name"`
-	ChatID    int64         `db:"chat_id"`
-	MsgID     sql.NullInt64 `db:"msg_id"`
-}
-
-//AdminRaidHeader contains info about raid
-type AdminRaidHeader struct {
-	RaidID int `db:"raid_id"`
-	AdminRaidInfo
-}
-
-var cachedAdminRaidInfo = make(map[int]AdminRaidInfo)
-
-func updateAdminsInfo() {
+func updateUserInfo() {
 	for {
-		var rh []AdminRaidHeader
-		err := db.Select(&rh, "SELECT raid_id, raid_info, pogoname AS admin_name, chat_id, msg_id FROM raids LEFT JOIN players USING (user_id)")
+		var raids []Raid
 
-		if err == nil {
-			for _, raidHeader := range rh {
-				cachedRH, ok := cachedAdminRaidInfo[raidHeader.RaidID]
-				if ok {
-					if cachedRH != raidHeader.AdminRaidInfo {
-						fmt.Printf("raid %d changed!\r\n", raidHeader.RaidID)
-						cachedAdminRaidInfo[raidHeader.RaidID] = raidHeader.AdminRaidInfo //update cache
+		errRaids := db.Select(&raids, "SELECT DISTINCT raid_id FROM raids")
+		if errRaids == nil {
+			for _, raid := range raids {
+				//first, update admin info
+				raid.UpdateRaidAdminInfo()
+				//second, update all other chats
+				var messages []ChatAndMessage
+				err := db.Select(&messages, "SELECT chat_id, msg_id FROM chats WHERE raid_id = $1", raid)
 
-						if raidHeader.MsgID.Valid { //has admin interface
-							fmt.Printf("send update to raid %d\r\n", raidHeader.RaidID)
-							//sender.EditText(raidHeader.ChatID, int(raidHeader.MsgID.Int64), raidHeader.RaidInfo) //send update to admin
-							r := Raid(raidHeader.RaidID)
-							r.ShowControls()
-						} else {
-							fmt.Printf("raid %d is not yet started\r\n", raidHeader.RaidID)
-						}
+				if err == nil {
+					for _, msg := range messages {
+						raid.UpdateUserInfo(msg.ChatID, msg.MsgID)
 					}
-				} else {
-					fmt.Printf("make cache for raid %d\r\n", raidHeader.RaidID)
-					cachedAdminRaidInfo[raidHeader.RaidID] = raidHeader.AdminRaidInfo
 				}
 			}
-		} else {
-			fmt.Printf("error get raid info: %s\r\n", err.Error())
 		}
 		time.Sleep(time.Second)
 	}
+
 }
 
 //GetAdminChats returns admin's chat IDs (for active raids)
 func GetAdminChats() (adminChats []int64, err error) {
-	err = db.Select(&adminChats, "SELECT DISTINCT chat_id FROM raids")
+	var adminUsers []User
+	err = db.Select(&adminUsers, "SELECT DISTINCT user_id FROM raids")
+	for _, x := range adminUsers {
+		adminChats = append(adminChats, int64(x))
+	}
 	return
 }
 
 //GetVotersChats returns voter's chat IDs (for active raids)
 func GetVotersChats() (votersChats []int64, err error) {
-	err = db.Select(&votersChats, "SELECT DISTINCT chat_id FROM votes")
+	var voters []User
+	err = db.Select(&voters, "SELECT DISTINCT user_id FROM votes")
+	for _, x := range voters {
+		votersChats = append(votersChats, int64(x))
+	}
 	return
 }
 
 //GetAllChats returns all chat IDs (for active raids)
 func GetAllChats() (allChats []int64, err error) {
-	err = db.Select(&allChats, "SELECT DISTINCT chat_id FROM raids FULL OUTER JOIN votes USING (chat_id)")
+	err = db.Select(&allChats, "SELECT DISTINCT chat_id FROM chats")
 	return
 }
 
-//GetSubscribersChats returns chat IDs of users who wants to receive invites to new raids
-func GetSubscribersChats() (subscribersChats []int64, err error) {
-	err = db.Select(&subscribersChats, "SELECT DISTINCT user_id FROM players WHERE notif = true")
+//GetSubscribers returns users who wants to receive invites to new raids
+func GetSubscribers() (subscribers []User, err error) {
+	err = db.Select(&subscribers, "SELECT DISTINCT user_id FROM players WHERE notif = true")
 	return
 }
