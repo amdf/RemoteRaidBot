@@ -36,14 +36,19 @@ func (userID User) IsNotificationsEnabled() (result bool) {
 	return
 }
 
-//Register function
-func (userID User) Register(pogoName string) {
-	rs := []rune(pogoName)
+//SetName function
+func (userID User) SetName(name string) {
+	rs := []rune(name)
 	if len(rs) > 255 {
-		pogoName = string(rs[:255])
+		name = string(rs[:255])
 	}
-	str := `INSERT INTO players (user_id, pogoname, notif) VALUES ($1, $2, $3)`
-	db.Exec(str, userID, pogoName, true)
+	if !userID.IsRegistered() {
+		str := `INSERT INTO players (user_id, pogoname, notif) VALUES ($1, $2, $3)`
+		db.Exec(str, userID, name, true)
+	} else {
+		str := `UPDATE players SET pogoname = $1 where user_id = $2`
+		db.Exec(str, name, userID)
+	}
 }
 
 //SetCode function to store code
@@ -109,6 +114,8 @@ func (userID User) Vote(raid Raid, role string) {
 		str := `UPDATE votes SET raid_role = $1 WHERE user_id = $2`
 		db.Exec(str, role, userID)
 	} else {
-		raid.AddPlayer(userID, role)
+		if userID.IsRegistered() {
+			raid.AddPlayer(userID, role)
+		}
 	}
 }

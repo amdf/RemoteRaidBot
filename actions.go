@@ -50,58 +50,57 @@ func processCommandWithArgs(userID User, chatID int64, msgID *int, cmdArgs []str
 			sender.SendText(chatID, "Неверное использование команды")
 		}
 	case "/joininvite":
-		if msgID != nil {
-			r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
-			if err == nil {
-				raid := Raid(r)
-				userID.Vote(raid, "invite")
-			} else {
-				sender.SendText(chatID, "Неправильный аргумент команды")
-			}
+		//if msgID != nil {
+		r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
+		if err == nil {
+			raid := Raid(r)
+			userID.Vote(raid, "invite")
 		} else {
-			sender.SendText(chatID, "Неверное использование команды")
+			sender.SendText(chatID, "Неправильный аргумент команды")
 		}
+		//} else {
+		//	sender.SendText(chatID, "Неверное использование команды")
+		//}
 	case "/joinremote":
-		if msgID != nil {
-			r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
-			if err == nil {
-				raid := Raid(r)
-				userID.Vote(raid, "remote")
-			} else {
-				sender.SendText(chatID, "Неправильный аргумент команды")
-			}
+		//if msgID != nil {
+		r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
+		if err == nil {
+			raid := Raid(r)
+			userID.Vote(raid, "remote")
 		} else {
-			sender.SendText(chatID, "Неверное использование команды")
+			sender.SendText(chatID, "Неправильный аргумент команды")
 		}
+		//} else {
+		//	sender.SendText(chatID, "Неверное использование команды")
+		//}
 	case "/joinlive":
-		if msgID != nil {
-			r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
-			if err == nil {
-				raid := Raid(r)
-				userID.Vote(raid, "live")
-			} else {
-				sender.SendText(chatID, "Неправильный аргумент команды")
-			}
+		//if msgID != nil {
+		r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
+		if err == nil {
+			raid := Raid(r)
+			userID.Vote(raid, "live")
 		} else {
-			sender.SendText(chatID, "Неверное использование команды")
+			sender.SendText(chatID, "Неправильный аргумент команды")
 		}
+		//} else {
+		//	sender.SendText(chatID, "Неверное использование команды")
+		//}
 	}
 
 }
 
 func processCommand(userID User, chatID int64, msgID *int, cmdText string) {
+
 	switch cmdText {
 	case "/start":
 		removePreviousRequests(userID)
-		if userID.IsRegistered() {
-			menuSettings(userID, chatID)
-		} else {
-			showRegisterButton(chatID)
-		}
+
+		menuSettings(userID, chatID)
+
 	case "/newraid":
 		sender.SendText(chatID, "Введите информацию о рейде в свободной форме:")
 		requestRaidInfo[userID] = true
-	case "/reg":
+	case "/setname":
 		sender.SendText(chatID, "Введите ваше имя в Pokemon Go:")
 		requestPogoName[userID] = true
 	case "/unreg":
@@ -117,9 +116,9 @@ func processCommand(userID User, chatID int64, msgID *int, cmdText string) {
 	case "/notif on":
 		userID.EnableNotifications(true)
 		if userID.IsNotificationsEnabled() {
-			sender.SendText(chatID, "Уведомления выключены. Вы не будете получать информацию о рейдах")
-		} else {
 			sender.SendText(chatID, "Уведомления включены. Бот будет присылать информацию о новых рейдах")
+		} else {
+			sender.SendText(chatID, "Уведомления выключены. Вы не будете получать информацию о рейдах")
 		}
 	case "/notif off":
 		userID.EnableNotifications(false)
@@ -154,13 +153,11 @@ func processCommand(userID User, chatID int64, msgID *int, cmdText string) {
 //returns true if cmdText was processed
 func processAnswer(userID User, chatID int64, msgID *int, cmdText string) bool {
 	if requestPogoName[userID] {
-		userID.Register(cmdText)
+		userID.SetName(cmdText)
 		if userID.IsRegistered() {
-			sender.SendText(chatID, "Вы успешно зарегистрировались под именем "+cmdText+
-				"\r\nТеперь введите код дружбы из Pokemon Go (12 цифр):")
-			requestPogoCode[userID] = true
+			sender.SendText(chatID, "Установлено имя "+cmdText)
 		} else {
-			sender.SendText(chatID, "Ошибка регистрации")
+			sender.SendText(chatID, "Ошибка установки имени")
 		}
 		delete(requestPogoName, userID)
 		return true

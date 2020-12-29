@@ -24,6 +24,7 @@ var db *sqlx.DB
 var bot *tgbotapi.BotAPI
 var sender BotSender
 var sendUpdates = make(map[int64]bool)
+var userNames = make(map[User]string)
 
 func testNotif() {
 	sec := time.NewTicker(time.Second)
@@ -95,6 +96,11 @@ func main() {
 			userID := User(update.CallbackQuery.From.ID)
 			chatID := update.CallbackQuery.Message.Chat.ID
 			msgID := update.CallbackQuery.Message.MessageID
+
+			if !userID.IsRegistered() {
+				registerUser(userID, update.CallbackQuery.From)
+			}
+
 			sender.ProcessChat(chatID)
 			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, update.CallbackQuery.Data))
 			processCommand(userID, chatID, &msgID, update.CallbackQuery.Data)
@@ -106,9 +112,32 @@ func main() {
 			chatID := update.Message.Chat.ID
 			msgID := update.Message.MessageID
 
+			if !userID.IsRegistered() {
+				registerUser(userID, update.Message.From)
+			}
+
 			sender.ProcessChat(chatID)
 			processCommand(userID, chatID, nil, update.Message.Text)
 			log.Printf("%d:%d [%s] %s\r\n", chatID, msgID, update.Message.From.UserName, update.Message.Text)
 		}
 	}
+}
+
+func registerUser(user User, tgu *tgbotapi.User) {
+	var name string
+	if nil == tgu {
+		name = fmt.Sprintf("user%d", user)
+	} else {
+		if len(tgu.UserName) > 0 {
+			name = tgu.UserName
+		} else {
+			if (len(tgu.FirstName) > 0) || (len(tgu.LastName) > 0) {
+				name = tgu.FirstName + " " + tgu.LastName
+			} else {
+				name = fmt.Sprintf("user%d", user)
+			}
+		}
+	}
+	fmt.Printf("New user %d known as %s\r\n", user, name)
+	user.SetName(name)
 }

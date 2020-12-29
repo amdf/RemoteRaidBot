@@ -278,10 +278,12 @@ type RaidPlayer struct {
 func (raid Raid) GetText() (raidText string) {
 	raidInfo, err := raid.GetRaidInfo()
 	if err == nil {
-		raidText += "Рейд создан в @pnzraidbot\r\n" + raidInfo
+		raidText += "Рейд создан в @pnzraidbot\r\n\r\n" + raidInfo + "\r\n"
 
 		var raidPlayers []RaidPlayer
 		db.Select(&raidPlayers, `SELECT raid_role,pogoname, pogocode FROM votes FULL OUTER JOIN players USING (user_id) WHERE raid_id = $1`, raid)
+
+		var nocode []string
 
 		if len(raidPlayers) > 0 {
 			raidText += "\r\nПригласите:"
@@ -290,8 +292,11 @@ func (raid Raid) GetText() (raidText string) {
 					code := " (нет кода)"
 					if playerInfo.Code.Valid {
 						code = "   Код: <code>" + playerInfo.Code.String + "</code>"
+						raidText += "\r\n • <b>" + playerInfo.Name + "</b>" + code
+					} else {
+						nocode = append(nocode, playerInfo.Name)
 					}
-					raidText += "\r\n • <b>" + playerInfo.Name + "</b>" + code
+
 				}
 			}
 			raidText += "\r\nДостаю:"
@@ -306,6 +311,15 @@ func (raid Raid) GetText() (raidText string) {
 					raidText += "\r\n • <b>" + playerInfo.Name + "</b>"
 				}
 			}
+
+			if len(nocode) > 0 {
+				raidText += "\r\nНе зарегистрировали свой код:"
+				for _, name := range nocode {
+					raidText += "\r\n • <b>" + name + "</b>"
+				}
+			}
+		} else {
+			raidText += "\r\n ни один игрок пока не присоединился"
 		}
 
 	} else {

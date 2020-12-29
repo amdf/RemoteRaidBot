@@ -14,23 +14,16 @@ func menuSettings(userID User, chatID int64) {
 			tgbotapi.NewInlineKeyboardButtonData("Выкл. уведомления", "/notif off"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("новый рейд", "/newraid"),
+			tgbotapi.NewInlineKeyboardButtonData("изменить имя", "/setname"),
 			tgbotapi.NewInlineKeyboardButtonData("изменить код", "/setcode"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("новый рейд", "/newraid"),
 		),
 	)
 
 	msg := tgbotapi.NewMessage(chatID, menuText)
 	msg.ReplyMarkup = keyboard
 	msg.ParseMode = tgbotapi.ModeHTML
-	sender.SendMessage(chatID, msg)
-}
-
-func showRegisterButton(chatID int64) {
-	msg := tgbotapi.NewMessage(chatID, "Новый пользователь?")
-	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("начать", "/reg"),
-		),
-	)
 	sender.SendMessage(chatID, msg)
 }
