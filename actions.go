@@ -1,10 +1,13 @@
 package main
 
 import (
+	"log"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 var requestPogoName = make(map[User]bool)
@@ -17,7 +20,7 @@ func removePreviousRequests(user User) {
 	delete(requestRaidInfo, user)
 }
 
-func processCommandWithArgs(userID User, chatID int64, msgID *int, cmdArgs []string) {
+func processCommandWithArgs(userID User, chatID *int64, msgID *int, inlineMsgID string, cmdArgs []string) {
 
 	switch cmdArgs[0] {
 	case "/raidstart":
@@ -28,13 +31,19 @@ func processCommandWithArgs(userID User, chatID int64, msgID *int, cmdArgs []str
 				if !raid.Started() {
 					raid.Start(*msgID)
 				} else {
-					sender.SendText(chatID, "Рейд уже стартовал!")
+					if nil != chatID {
+						sender.SendText(*chatID, "Рейд уже стартовал!")
+					}
 				}
 			} else {
-				sender.SendText(chatID, "Неправильный аргумент команды")
+				if nil != chatID {
+					sender.SendText(*chatID, "Неправильный аргумент команды")
+				}
 			}
 		} else {
-			sender.SendText(chatID, "Неверное использование команды")
+			if nil != chatID {
+				sender.SendText(*chatID, "Неверное использование команды")
+			}
 		}
 	case "/raidremove":
 		if msgID != nil {
@@ -44,92 +53,113 @@ func processCommandWithArgs(userID User, chatID int64, msgID *int, cmdArgs []str
 				raid.Stop()
 
 			} else {
-				sender.SendText(chatID, "Неправильный аргумент команды")
+				if nil != chatID {
+					sender.SendText(*chatID, "Неправильный аргумент команды")
+				}
 			}
 		} else {
-			sender.SendText(chatID, "Неверное использование команды")
+			if nil != chatID {
+				sender.SendText(*chatID, "Неверное использование команды")
+			}
 		}
 	case "/joininvite":
-		//if msgID != nil {
 		r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
 		if err == nil {
 			raid := Raid(r)
 			userID.Vote(raid, "invite")
+			raid.RegisterGroupMessageForStatusUpdates(inlineMsgID)
 		} else {
-			sender.SendText(chatID, "Неправильный аргумент команды")
+			if nil != chatID {
+				sender.SendText(*chatID, "Неправильный аргумент команды")
+			}
 		}
-		//} else {
-		//	sender.SendText(chatID, "Неверное использование команды")
-		//}
+
 	case "/joinremote":
-		//if msgID != nil {
+
 		r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
 		if err == nil {
 			raid := Raid(r)
 			userID.Vote(raid, "remote")
+			raid.RegisterGroupMessageForStatusUpdates(inlineMsgID)
 		} else {
-			sender.SendText(chatID, "Неправильный аргумент команды")
+			if nil != chatID {
+				sender.SendText(*chatID, "Неправильный аргумент команды")
+			}
 		}
-		//} else {
-		//	sender.SendText(chatID, "Неверное использование команды")
-		//}
+
 	case "/joinlive":
-		//if msgID != nil {
+
 		r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
 		if err == nil {
 			raid := Raid(r)
 			userID.Vote(raid, "live")
+			raid.RegisterGroupMessageForStatusUpdates(inlineMsgID)
 		} else {
-			sender.SendText(chatID, "Неправильный аргумент команды")
+			if nil != chatID {
+				sender.SendText(*chatID, "Неправильный аргумент команды")
+			}
 		}
-		//} else {
-		//	sender.SendText(chatID, "Неверное использование команды")
-		//}
+
 	}
 
 }
 
-func processCommand(userID User, chatID int64, msgID *int, cmdText string) {
+func processCommand(userID User, chatID *int64, msgID *int, inlineMsgID string, cmdText string) {
 
 	switch cmdText {
 	case "/start":
 		removePreviousRequests(userID)
 
-		menuSettings(userID, chatID)
+		if nil != chatID {
+			menuSettings(userID, *chatID)
+		}
 
 	case "/newraid":
-		sender.SendText(chatID, "Введите информацию о рейде в свободной форме:")
-		requestRaidInfo[userID] = true
+		if nil != chatID {
+			sender.SendText(*chatID, "Введите информацию о рейде в свободной форме:")
+			requestRaidInfo[userID] = true
+		}
 	case "/setname":
-		sender.SendText(chatID, "Введите ваше имя в Pokemon Go:")
-		requestPogoName[userID] = true
+		if nil != chatID {
+			sender.SendText(*chatID, "Введите ваше имя в Pokemon Go:")
+			requestPogoName[userID] = true
+		}
 	case "/unreg":
 		userID.Unregister()
-		if !userID.IsRegistered() {
-			sender.SendText(chatID, "теперь вы не зарегистрированы")
-		} else {
-			sender.SendText(chatID, "ошибка удаления регистрации")
+		if nil != chatID {
+			if !userID.IsRegistered() {
+				sender.SendText(*chatID, "теперь вы не зарегистрированы")
+			} else {
+				sender.SendText(*chatID, "ошибка удаления регистрации")
+			}
 		}
 	case "/setcode":
-		sender.SendText(chatID, "Введите код дружбы из Pokemon Go (12 цифр):")
-		requestPogoCode[userID] = true
+		if nil != chatID {
+			sender.SendText(*chatID, "Введите код дружбы из Pokemon Go (12 цифр):")
+			requestPogoCode[userID] = true
+		}
 	case "/notif on":
 		userID.EnableNotifications(true)
-		if userID.IsNotificationsEnabled() {
-			sender.SendText(chatID, "Уведомления включены. Бот будет присылать информацию о новых рейдах")
-		} else {
-			sender.SendText(chatID, "Уведомления выключены. Вы не будете получать информацию о рейдах")
+		if nil != chatID {
+			if userID.IsNotificationsEnabled() {
+				sender.SendText(*chatID, "Уведомления включены. Бот будет присылать информацию о новых рейдах")
+			} else {
+				sender.SendText(*chatID, "Уведомления выключены. Вы не будете получать информацию о рейдах")
+			}
 		}
 	case "/notif off":
 		userID.EnableNotifications(false)
-		if userID.IsNotificationsEnabled() {
-			sender.SendText(chatID, "Уведомления выключены. Вы не будете получать информацию о рейдах")
-		} else {
-			sender.SendText(chatID, "Уведомления включены. Бот будет присылать информацию о новых рейдах")
+		if nil != chatID {
+			if userID.IsNotificationsEnabled() {
+				sender.SendText(*chatID, "Уведомления выключены. Вы не будете получать информацию о рейдах")
+			} else {
+				sender.SendText(*chatID, "Уведомления включены. Бот будет присылать информацию о новых рейдах")
+			}
 		}
 	case "/r3start": //debug
-		sender.SendText(chatID, "Рестарт.")
-
+		if nil != chatID {
+			sender.SendText(*chatID, "Рестарт.")
+		}
 		bot.StopReceivingUpdates()
 		cmd := exec.Command(os.Args[0], "")
 		cmd.Start()
@@ -138,13 +168,18 @@ func processCommand(userID User, chatID int64, msgID *int, cmdText string) {
 		if cmdText[0] == '/' { //command?
 			cmdArgs := strings.Split(cmdText, " ")
 			if len(cmdArgs) > 1 { //command with arguments
-				processCommandWithArgs(userID, chatID, msgID, cmdArgs)
+				processCommandWithArgs(userID, chatID, msgID, inlineMsgID, cmdArgs)
 			} else {
-				sender.SendText(chatID, "Неизвестная команда")
+				if nil != chatID {
+					sender.SendText(*chatID, "Неизвестная команда")
+				}
 			}
 		} else { //some text?
-			if !processAnswer(userID, chatID, msgID, cmdText) { //plain text - possible answer to request
-				menuSettings(userID, chatID) //if not, show menu
+			if nil != chatID {
+				if !processAnswer(userID, *chatID, msgID, cmdText) { //plain text - possible answer to request
+
+					menuSettings(userID, *chatID) //if not, show menu
+				}
 			}
 		}
 	}
@@ -154,11 +189,13 @@ func processCommand(userID User, chatID int64, msgID *int, cmdText string) {
 func processAnswer(userID User, chatID int64, msgID *int, cmdText string) bool {
 	if requestPogoName[userID] {
 		userID.SetName(cmdText)
+
 		if userID.IsRegistered() {
 			sender.SendText(chatID, "Установлено имя "+cmdText)
 		} else {
 			sender.SendText(chatID, "Ошибка установки имени")
 		}
+
 		delete(requestPogoName, userID)
 		return true
 	}
@@ -190,4 +227,36 @@ func processAnswer(userID User, chatID int64, msgID *int, cmdText string) bool {
 	}
 
 	return false
+}
+
+func processInlineQuery(queryID string, queryText string) {
+	if 0 == len(queryText) {
+		return
+	}
+	r, err := strconv.ParseInt(queryText, 10, 32)
+	if err == nil {
+		raid := Raid(r)
+
+		article := tgbotapi.NewInlineQueryResultArticle(queryID, "Рейд", "")
+		article.Description = "Разместить рейд"
+
+		kb := raid.GetKeyboard()
+		article.ReplyMarkup = &kb
+
+		//msg.ParseMode = tgbotapi.ModeHTML
+		article.InputMessageContent = tgbotapi.InputTextMessageContent{
+			Text:      raid.GetText(),
+			ParseMode: tgbotapi.ModeHTML,
+		}
+		inlineConf := tgbotapi.InlineConfig{
+			InlineQueryID: queryID,
+			IsPersonal:    true,
+			CacheTime:     0,
+			Results:       []interface{}{article},
+		}
+
+		if _, err := bot.AnswerInlineQuery(inlineConf); err != nil {
+			log.Println(err)
+		}
+	}
 }

@@ -73,52 +73,60 @@ func main() {
 		panic("bot.GetUpdatesChan()")
 	}
 
-	var restoreChats []int64
-	restoreChats, errAllChats := GetAllChats()
-	if errAllChats == nil {
-		fmt.Printf("Begin process %d admins and voters chats\r\n", len(restoreChats))
-		sender.Init(bot, restoreChats)
-	}
-
-	subUsers, errSubUsers := GetSubscribers()
-	if errSubUsers == nil {
-		fmt.Printf("Begin process additional %d subscriber chats\r\n", len(subUsers))
-		for _, subUserID := range subUsers {
-			sender.ProcessChat(int64(subUserID))
-		}
-	}
+	sender.Init(bot)
 
 	go updateUserInfo()
 
 	for update := range updates {
-
-		if update.CallbackQuery != nil {
+		if update.CallbackQuery != nil && nil != update.CallbackQuery.From {
+			//inlinemessageid and chatinstance?
 			userID := User(update.CallbackQuery.From.ID)
-			chatID := update.CallbackQuery.Message.Chat.ID
-			msgID := update.CallbackQuery.Message.MessageID
+			var chatID *int64
+			var msgID *int
+			if nil != update.CallbackQuery.Message {
+				if nil != update.CallbackQuery.Message.Chat {
+					chatID = &update.CallbackQuery.Message.Chat.ID
+				}
+				msgID = &update.CallbackQuery.Message.MessageID
+			}
 
 			if !userID.IsRegistered() {
 				registerUser(userID, update.CallbackQuery.From)
 			}
 
-			sender.ProcessChat(chatID)
 			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, update.CallbackQuery.Data))
-			processCommand(userID, chatID, &msgID, update.CallbackQuery.Data)
+			processCommand(userID, chatID, msgID, update.CallbackQuery.InlineMessageID, update.CallbackQuery.Data)
 
-			log.Printf("%d:%d [%s]~ %s\r\n", chatID, msgID, update.CallbackQuery.From.UserName, update.CallbackQuery.Data)
+			if chatID != nil && msgID != nil {
+				log.Printf("%d:%d [%s]~ %s\r\n", *chatID, *msgID, update.CallbackQuery.From.UserName, update.CallbackQuery.Data)
+			} else {
+				log.Printf("[%s]~ %s\r\n", update.CallbackQuery.From.UserName, update.CallbackQuery.Data)
+			}
 		}
-		if update.Message != nil {
+
+		if update.Message != nil && update.Message.From != nil {
 			userID := User(update.Message.From.ID)
-			chatID := update.Message.Chat.ID
-			msgID := update.Message.MessageID
+			var chatID *int64
+			var msgID *int
+
+			if nil != update.Message.Chat {
+				chatID = &update.Message.Chat.ID
+			}
+			msgID = &update.Message.MessageID
 
 			if !userID.IsRegistered() {
 				registerUser(userID, update.Message.From)
 			}
 
-			sender.ProcessChat(chatID)
-			processCommand(userID, chatID, nil, update.Message.Text)
-			log.Printf("%d:%d [%s] %s\r\n", chatID, msgID, update.Message.From.UserName, update.Message.Text)
+			processCommand(userID, chatID, nil, "", update.Message.Text)
+			if chatID != nil && msgID != nil {
+				log.Printf("%d:%d [%s] %s\r\n", *chatID, *msgID, update.Message.From.UserName, update.Message.Text)
+			} else {
+				log.Printf("[%s] %s\r\n", update.Message.From.UserName, update.Message.Text)
+			}
+		}
+		if update.InlineQuery != nil {
+			processInlineQuery(update.InlineQuery.ID, update.InlineQuery.Query)
 		}
 	}
 }

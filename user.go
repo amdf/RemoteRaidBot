@@ -111,8 +111,8 @@ func (userID User) EnableNotifications(enable bool) {
 func (userID User) Vote(raid Raid, role string) {
 	_, err := raid.GetPlayerRole(userID)
 	if err == nil {
-		str := `UPDATE votes SET raid_role = $1 WHERE user_id = $2`
-		db.Exec(str, role, userID)
+		str := `UPDATE votes SET raid_role = $1 WHERE user_id = $2 AND raid_id = $3`
+		db.Exec(str, role, userID, raid)
 	} else {
 		if userID.IsRegistered() {
 			raid.AddPlayer(userID, role)

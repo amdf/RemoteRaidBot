@@ -22,6 +22,15 @@ func updateUserInfo() {
 						raid.UpdateUserInfo(msg.ChatID, msg.MsgID)
 					}
 				}
+				//third, update public chat messages
+				var groupMessages []string
+				err = db.Select(&groupMessages, "SELECT inline_msg_id FROM groupmessages WHERE raid_id = $1", raid)
+
+				if err == nil {
+					for _, inlineMsgID := range groupMessages {
+						raid.UpdatePublicInfo(inlineMsgID)
+					}
+				}
 			}
 		}
 		time.Sleep(time.Second)

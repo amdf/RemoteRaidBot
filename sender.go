@@ -17,8 +17,8 @@ const (
 
 const (
 	maxUsers               = 1000
-	limitAllChats          = time.Second / 30
-	limitSingleChat        = time.Second
+	limitAllChats          = time.Second / 28        //max 1/30 sec
+	limitSingleChat        = 1100 * time.Millisecond //max 1 sec
 	maxQueuedMessages      = 10
 	maxTotalQueuedMessages = 100
 )
@@ -36,8 +36,8 @@ type BotSender struct {
 	commonChannel  chan BotMessage
 }
 
-//Init function. Argument "chats" can be nil (should populate chats later with ProcessChat).
-func (bs *BotSender) Init(botapi *tgbotapi.BotAPI, chats []int64) {
+//Init function
+func (bs *BotSender) Init(botapi *tgbotapi.BotAPI) {
 	if nil == botapi {
 		panic(errNilBotAPI)
 	}
@@ -47,16 +47,12 @@ func (bs *BotSender) Init(botapi *tgbotapi.BotAPI, chats []int64) {
 	bs.bot = botapi
 	bs.senderChannels = make(map[int64]chan BotMessage, maxUsers)
 	bs.commonChannel = make(chan BotMessage, maxTotalQueuedMessages)
-	if chats != nil {
-		for _, chatID := range chats {
-			bs.ProcessChat(chatID)
-		}
-	}
+
 	go bs.processAllMessages()
 }
 
-//ProcessChat creates a routine for chat
-func (bs *BotSender) ProcessChat(chatID int64) {
+//creates a routine for chat
+func (bs *BotSender) processChat(chatID int64) {
 	if nil == bs {
 		panic(errNilBotsender)
 	}
@@ -69,6 +65,7 @@ func (bs *BotSender) ProcessChat(chatID int64) {
 
 //SendMessage function
 func (bs BotSender) SendMessage(chatID int64, newmsg tgbotapi.Chattable) (err error) {
+	bs.processChat(chatID)
 	ch, ok := bs.senderChannels[chatID]
 	if ok {
 		msgToSend := BotMessage{msg: newmsg}
@@ -79,8 +76,15 @@ func (bs BotSender) SendMessage(chatID int64, newmsg tgbotapi.Chattable) (err er
 	return
 }
 
+//SendInlineMessage function
+func (bs BotSender) SendInlineMessage(newmsg tgbotapi.Chattable) {
+	msgToSend := BotMessage{msg: newmsg}
+	bs.commonChannel <- msgToSend
+}
+
 //SendMessageWithCallback function. Answer will return to callback channel
 func (bs BotSender) SendMessageWithCallback(chatID int64, newmsg tgbotapi.Chattable, callback chan<- ChatAndMessage) (err error) {
+	bs.processChat(chatID)
 	ch, ok := bs.senderChannels[chatID]
 	if ok {
 		msgToSend := BotMessage{msg: newmsg, callbackChannel: callback}

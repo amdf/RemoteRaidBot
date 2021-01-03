@@ -242,6 +242,9 @@ func (raid Raid) GetAdminKeyboard() tgbotapi.InlineKeyboardMarkup {
 			tgbotapi.NewInlineKeyboardButtonData("Достаю", "/joinremote "+raid.String()),
 			tgbotapi.NewInlineKeyboardButtonData("Удалить", "/raidremove "+raid.String()),
 		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonSwitch("Разместить", raid.String()),
+		),
 	)
 }
 
@@ -261,10 +264,18 @@ func (raid Raid) UpdateRaidAdminInfo() {
 	}
 }
 
-//RegisterChatForStatusUpdates function
-func (raid Raid) RegisterChatForStatusUpdates(chatID int64, msgID int) {
+//RegisterPlayerChatForStatusUpdates function (bot and user private chat)
+func (raid Raid) RegisterPlayerChatForStatusUpdates(chatID int64, msgID int) {
 	str := `INSERT INTO chats (raid_id, chat_id, msg_id) VALUES ($1, $2, $3)`
 	db.Exec(str, raid, chatID, msgID)
+}
+
+//RegisterGroupMessageForStatusUpdates function (a message in a telegram group)
+func (raid Raid) RegisterGroupMessageForStatusUpdates(inlineMsgID string) {
+	if inlineMsgID != "" {
+		str := `INSERT INTO groupmessages (raid_id, inline_msg_id) VALUES ($1, $2)`
+		db.Exec(str, raid, inlineMsgID)
+	}
 }
 
 //RaidPlayer type
@@ -278,7 +289,7 @@ type RaidPlayer struct {
 func (raid Raid) GetText() (raidText string) {
 	raidInfo, err := raid.GetRaidInfo()
 	if err == nil {
-		raidText += "Рейд создан в @pnzraidbot\r\n\r\n" + raidInfo + "\r\n"
+		raidText += raidInfo + "\r\n"
 
 		var raidPlayers []RaidPlayer
 		db.Select(&raidPlayers, `SELECT raid_role,pogoname, pogocode FROM votes FULL OUTER JOIN players USING (user_id) WHERE raid_id = $1`, raid)
@@ -343,10 +354,9 @@ func (raid Raid) CreateUserInfo(user User) {
 		callback := make(chan ChatAndMessage)
 		sender.SendMessageWithCallback(chatID, msg, callback)
 		msgInfo := <-callback //wait for actual sending
-		sender.ProcessChat(msgInfo.ChatID)
 
 		raid.AddPlayer(user, "spectator")
-		raid.RegisterChatForStatusUpdates(msgInfo.ChatID, msgInfo.MsgID)
+		raid.RegisterPlayerChatForStatusUpdates(msgInfo.ChatID, msgInfo.MsgID)
 	}()
 
 }
@@ -360,6 +370,18 @@ func (raid Raid) UpdateUserInfo(chatID int64, msgID int) {
 	msg.ReplyMarkup = &keyboard
 	msg.ParseMode = tgbotapi.ModeHTML
 	sender.SendMessage(chatID, msg)
+}
+
+//UpdatePublicInfo function
+func (raid Raid) UpdatePublicInfo(inlineMsgID string) {
+	keyboard := raid.GetKeyboard()
+	raidText := raid.GetText()
+
+	msg := tgbotapi.NewEditMessageText(0, 0, raidText)
+	msg.InlineMessageID = inlineMsgID
+	msg.ReplyMarkup = &keyboard
+	msg.ParseMode = tgbotapi.ModeHTML
+	sender.SendInlineMessage(msg)
 }
 
 //AddPlayer function
