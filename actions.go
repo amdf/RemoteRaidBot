@@ -50,7 +50,7 @@ func processCommandWithArgs(userID User, chatID *int64, msgID *int, inlineMsgID 
 			r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
 			if err == nil {
 				raid := Raid(r)
-				raid.Stop()
+				raid.Finish()
 
 			} else {
 				if nil != chatID {
@@ -100,6 +100,18 @@ func processCommandWithArgs(userID User, chatID *int64, msgID *int, inlineMsgID 
 			}
 		}
 
+	case "/joinspectator":
+
+		r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
+		if err == nil {
+			raid := Raid(r)
+			userID.Vote(raid, "spectator")
+			raid.RegisterGroupMessageForStatusUpdates(inlineMsgID)
+		} else {
+			if nil != chatID {
+				sender.SendText(*chatID, "Неправильный аргумент команды")
+			}
+		}
 	}
 
 }

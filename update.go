@@ -32,6 +32,11 @@ func updateUserInfo() {
 							raid.UpdatePublicInfo(inlineMsgID)
 						}
 					}
+					finished, _ := raid.IsFinished()
+					if finished {
+						raid.Delete()
+						delete(infoUpdated, raid)
+					}
 					infoUpdated[raid] = true
 				}
 			}

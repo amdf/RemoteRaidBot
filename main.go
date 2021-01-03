@@ -95,7 +95,7 @@ func main() {
 				registerUser(userID, update.CallbackQuery.From)
 			}
 
-			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, update.CallbackQuery.Data))
+			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "Обработка..."))
 			processCommand(userID, chatID, msgID, update.CallbackQuery.InlineMessageID, update.CallbackQuery.Data)
 
 			if chatID != nil && msgID != nil {
