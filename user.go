@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
 )
 
 //User - telegram and bot user
@@ -109,13 +110,30 @@ func (userID User) EnableNotifications(enable bool) {
 
 //Vote function
 func (userID User) Vote(raid Raid, role string) {
+	var changed bool
 	_, err := raid.GetPlayerRole(userID)
 	if err == nil {
-		str := `UPDATE votes SET raid_role = $1 WHERE user_id = $2 AND raid_id = $3`
-		db.Exec(str, role, userID, raid)
+		str := `UPDATE votes SET raid_role = $1 WHERE user_id = $2 AND raid_id = $3 AND raid_role <> $4 RETURNING user_id`
+
+		rows, err := db.Query(str, role, userID, raid, role)
+		if err == nil {
+			changed = rows.Next()
+			rows.Close()
+		}
+
 	} else {
 		if userID.IsRegistered() {
-			raid.AddPlayer(userID, role)
+			if raid.Started() {
+				raid.AddPlayer(userID, role)
+				changed = true
+			}
 		}
+	}
+
+	if changed {
+		log.Println("changed")
+		infoUpdated[raid] = false
+	} else {
+		log.Println("not changed")
 	}
 }

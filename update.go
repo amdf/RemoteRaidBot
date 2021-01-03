@@ -11,25 +11,28 @@ func updateUserInfo() {
 		errRaids := db.Select(&raids, "SELECT DISTINCT raid_id FROM raids")
 		if errRaids == nil {
 			for _, raid := range raids {
-				//first, update admin info
-				raid.UpdateRaidAdminInfo()
-				//second, update all other chats
-				var messages []ChatAndMessage
-				err := db.Select(&messages, "SELECT chat_id, msg_id FROM chats WHERE raid_id = $1", raid)
+				if !infoUpdated[raid] {
+					//first, update admin info
+					raid.UpdateRaidAdminInfo()
+					//second, update all other chats
+					var messages []ChatAndMessage
+					err := db.Select(&messages, "SELECT chat_id, msg_id FROM chats WHERE raid_id = $1", raid)
 
-				if err == nil {
-					for _, msg := range messages {
-						raid.UpdateUserInfo(msg.ChatID, msg.MsgID)
+					if err == nil {
+						for _, msg := range messages {
+							raid.UpdateUserInfo(msg.ChatID, msg.MsgID)
+						}
 					}
-				}
-				//third, update public chat messages
-				var groupMessages []string
-				err = db.Select(&groupMessages, "SELECT inline_msg_id FROM groupmessages WHERE raid_id = $1", raid)
+					//third, update public chat messages
+					var groupMessages []string
+					err = db.Select(&groupMessages, "SELECT inline_msg_id FROM groupmessages WHERE raid_id = $1", raid)
 
-				if err == nil {
-					for _, inlineMsgID := range groupMessages {
-						raid.UpdatePublicInfo(inlineMsgID)
+					if err == nil {
+						for _, inlineMsgID := range groupMessages {
+							raid.UpdatePublicInfo(inlineMsgID)
+						}
 					}
+					infoUpdated[raid] = true
 				}
 			}
 		}

@@ -237,8 +237,8 @@ func processInlineQuery(queryID string, queryText string) {
 	if err == nil {
 		raid := Raid(r)
 
-		article := tgbotapi.NewInlineQueryResultArticle(queryID, "Рейд", "")
-		article.Description = "Разместить рейд"
+		article := tgbotapi.NewInlineQueryResultArticle(queryID, "Разместить", "")
+		//article.Description = "Разместить рейд"
 
 		kb := raid.GetKeyboard()
 		article.ReplyMarkup = &kb

@@ -13,6 +13,8 @@ const (
 	errRaidNotActive = "raid has not started yet"
 )
 
+var infoUpdated = make(map[Raid]bool)
+
 //Raid - Pokemon Go Raid
 type Raid int
 
@@ -254,7 +256,7 @@ func (raid Raid) UpdateRaidAdminInfo() {
 	chatID, err1 := raid.GetAdminChatID()
 	msgID, err2 := raid.GetMsgID()
 
-	raidText := raid.GetText()
+	raidText := raid.GetAdminText()
 
 	if nil == err1 && nil == err2 {
 		msg := tgbotapi.NewEditMessageText(chatID, msgID, raidText)
@@ -285,8 +287,17 @@ type RaidPlayer struct {
 	Code sql.NullString `db:"pogocode"`
 }
 
-//GetText returns complete raid info text
+//GetText returns raid info text for everybody
 func (raid Raid) GetText() (raidText string) {
+	return raid.getText(false)
+}
+
+//GetAdminText returns raid info for admin
+func (raid Raid) GetAdminText() (raidText string) {
+	return raid.getText(true)
+}
+
+func (raid Raid) getText(showCodes bool) (raidText string) {
 	raidInfo, err := raid.GetRaidInfo()
 	if err == nil {
 		raidText += raidInfo + "\r\n"
@@ -300,14 +311,15 @@ func (raid Raid) GetText() (raidText string) {
 			raidText += "\r\nПригласите:"
 			for _, playerInfo := range raidPlayers {
 				if playerInfo.Role == "invite" {
-					code := " (нет кода)"
 					if playerInfo.Code.Valid {
-						code = "   Код: <code>" + playerInfo.Code.String + "</code>"
+						var code string
+						if showCodes {
+							code = "   Код: <code>" + playerInfo.Code.String + "</code>"
+						}
 						raidText += "\r\n • <b>" + playerInfo.Name + "</b>" + code
 					} else {
 						nocode = append(nocode, playerInfo.Name)
 					}
-
 				}
 			}
 			raidText += "\r\nДостаю:"
