@@ -45,7 +45,7 @@ func (userID User) SetName(name string) {
 	}
 	if !userID.IsRegistered() {
 		str := `INSERT INTO players (user_id, pogoname, notif) VALUES ($1, $2, $3)`
-		db.Exec(str, userID, name, true)
+		db.Exec(str, userID, name, false)
 	} else {
 		str := `UPDATE players SET pogoname = $1 where user_id = $2`
 		db.Exec(str, name, userID)

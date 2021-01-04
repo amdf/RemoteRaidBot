@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
 	"runtime"
 	"time"
 
@@ -146,7 +145,7 @@ func (bs BotSender) processAllMessages() {
 				cm := ChatAndMessage{MsgID: msgSent.MessageID, ChatID: msgSent.Chat.ID}
 				go func() { botMsg.callbackChannel <- cm }()
 			}
-			log.Printf("sending %d\r\n", debugCounter)
+			fmt.Printf("sending %d\r\n", debugCounter)
 			debugCounter++
 			time.Sleep(limitAllChats)
 		default:
