@@ -179,9 +179,9 @@ func processCommand(userID User, chatID *int64, msgID *int, inlineMsgID string, 
 		userID.EnableNotifications(false)
 		if nil != chatID {
 			if userID.IsNotificationsEnabled() {
-				sender.SendText(*chatID, "Уведомления выключены. Вы не будете получать информацию о рейдах")
-			} else {
 				sender.SendText(*chatID, "Уведомления включены. Бот будет присылать информацию о новых рейдах")
+			} else {
+				sender.SendText(*chatID, "Уведомления выключены. Вы не будете получать информацию о рейдах")
 			}
 		}
 	case "/r3start": //debug
