@@ -17,6 +17,7 @@ var (
 	user     = os.Getenv("RAIDBOT_USER")
 	password = os.Getenv("RAIDBOT_PASS")
 	botKey   = os.Getenv("RAIDBOT_TOKEN")
+	logDir   = os.Getenv("RAIDBOT_LOGDIR") //with / at the end
 	dbname   = "pnzraid"
 )
 
@@ -27,7 +28,7 @@ var sendUpdates = make(map[int64]bool)
 
 func main() {
 	log.SetOutput(&lumberjack.Logger{
-		Filename:   "remoteraidbot.log",
+		Filename:   logDir + "remoteraidbot.log",
 		MaxSize:    5, // megabytes
 		MaxBackups: 3,
 		MaxAge:     7,    //days
