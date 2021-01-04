@@ -6,7 +6,8 @@ import (
 
 func menuSettings(userID User, chatID int64) {
 	//tgbotapi.NewInlineKeyboardButtonData("удалиться из бота", "/unreg"),
-	var menuText = "Ваш код Pokemon Go: <code>" + userID.GetCode() + "</code>\r\n" +
+	var menuText = "Ваше имя: " + userID.GetName() + "\r\n" +
+		"Ваш код Pokemon Go: <code>" + userID.GetCode() + "</code>\r\n" +
 		"Вам доступны следующие действия:"
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
@@ -14,8 +15,9 @@ func menuSettings(userID User, chatID int64) {
 			tgbotapi.NewInlineKeyboardButtonData("Выкл. уведомления", "/notif off"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("изменить имя", "/setname"),
-			tgbotapi.NewInlineKeyboardButtonData("изменить код", "/setcode"),
+			tgbotapi.NewInlineKeyboardButtonData("имя", "/setname"),
+			tgbotapi.NewInlineKeyboardButtonData("код", "/setcode"),
+			tgbotapi.NewInlineKeyboardButtonData("удалить код", "/deletecode"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("новый рейд", "/newraid"),

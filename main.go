@@ -92,7 +92,7 @@ func main() {
 
 	for update := range updates {
 		if update.CallbackQuery != nil && nil != update.CallbackQuery.From {
-			//inlinemessageid and chatinstance?
+
 			userID := User(update.CallbackQuery.From.ID)
 			var chatID *int64
 			var msgID *int

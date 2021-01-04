@@ -64,21 +64,6 @@ func (raid Raid) String() string {
 	return fmt.Sprintf("%d", raid)
 }
 
-//GetAdminUserID function
-func (raid Raid) GetAdminUserID() (user User, err error) {
-	rows, dberr := db.Query("SELECT user_id FROM raids where raid_id = $1", raid)
-
-	if dberr == nil {
-		if rows.Next() {
-			dberr = rows.Scan(&user)
-		}
-		rows.Close()
-	}
-
-	err = dberr
-	return
-}
-
 //GetAdminChatID return raid admin's chat id
 func (raid Raid) GetAdminChatID() (result int64, err error) {
 	adminUserID, dberr := raid.GetAdminUserID()
@@ -98,7 +83,7 @@ func (raid Raid) Started() bool {
 //GetMsgID return msgid in admin's chat
 func (raid Raid) GetMsgID() (result int, err error) {
 	var msgID sql.NullInt64
-	rows, dberr := db.Query("SELECT msg_id FROM raids where raid_id = $1", raid)
+	rows, dberr := db.Query("SELECT msg_id FROM raids WHERE raid_id = $1", raid)
 
 	if dberr == nil {
 		if rows.Next() {
@@ -123,7 +108,7 @@ func (raid Raid) GetMsgID() (result int, err error) {
 
 //GetRaidInfo return raid info
 func (raid Raid) GetRaidInfo() (result string, err error) {
-	rows, dberr := db.Query("SELECT raid_info FROM raids where raid_id = $1", raid)
+	rows, dberr := db.Query("SELECT raid_info FROM raids WHERE raid_id = $1", raid)
 
 	if dberr == nil {
 		if rows.Next() {
@@ -136,13 +121,13 @@ func (raid Raid) GetRaidInfo() (result string, err error) {
 	return
 }
 
-//GetUserID return raid admin's user id
-func (raid Raid) GetUserID() (result int, err error) {
-	rows, dberr := db.Query("SELECT user_id FROM raids where raid_id = $1", raid)
+//GetAdminUserID function
+func (raid Raid) GetAdminUserID() (user User, err error) {
+	rows, dberr := db.Query("SELECT user_id FROM raids WHERE raid_id = $1", raid)
 
 	if dberr == nil {
 		if rows.Next() {
-			dberr = rows.Scan(&result)
+			dberr = rows.Scan(&user)
 		}
 		rows.Close()
 	}
@@ -233,9 +218,10 @@ func (raid Raid) GetKeyboard() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Пригласите", "/joininvite "+raid.String()),
-			tgbotapi.NewInlineKeyboardButtonData("Достаю", "/joinremote "+raid.String()),
+			tgbotapi.NewInlineKeyboardButtonData("Достаю", "/joinremote "+raid.String())),
+		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Вживую", "/joinlive "+raid.String()),
-			tgbotapi.NewInlineKeyboardButtonData("Отмена", "/joinspectator "+raid.String()),
+			tgbotapi.NewInlineKeyboardButtonData("❌", "/joinspectator "+raid.String()),
 		),
 	)
 }
@@ -285,7 +271,7 @@ func (raid Raid) GetAdminText() (raidText string) {
 	return raid.getText(true)
 }
 
-func (raid Raid) getText(showCodes bool) (raidText string) {
+func (raid Raid) getText(adminMode bool) (raidText string) {
 	raidInfo, err := raid.GetRaidInfo()
 	if err != nil {
 		raidText = "ошибка"
@@ -294,48 +280,49 @@ func (raid Raid) getText(showCodes bool) (raidText string) {
 
 	raidText += raidInfo + "\r\n"
 
-	var raidPlayers []RaidPlayer
-	db.Select(&raidPlayers, `SELECT raid_role, pogoname, pogocode FROM votes FULL OUTER JOIN players USING (user_id) WHERE raid_id = $1`, raid)
+	noCode := false
+	raidPlayers := []RaidPlayer{}
+	dbstr := `SELECT raid_role, pogoname, pogocode FROM votes FULL OUTER JOIN players USING (user_id) WHERE raid_id = $1 AND raid_role = $2`
 
-	var nocode []string
-
+	db.Select(&raidPlayers, dbstr, raid, "invite")
 	if len(raidPlayers) > 0 {
 		raidText += "\r\nПригласите:"
 		for _, playerInfo := range raidPlayers {
-			if playerInfo.Role == "invite" {
-				if playerInfo.Code.Valid {
-					var code string
-					if showCodes {
-						code = "   Код: <code>" + playerInfo.Code.String + "</code>"
-					}
-					raidText += "\r\n • <b>" + playerInfo.Name + "</b>" + code
-				} else {
-					nocode = append(nocode, playerInfo.Name)
+			var code string
+
+			if playerInfo.Code.Valid {
+				if adminMode {
+					code = "   Код: <code>" + playerInfo.Code.String + "</code>"
 				}
+			} else {
+				code = "   (нет кода)"
+				noCode = true
 			}
+
+			raidText += "\r\n • <b>" + playerInfo.Name + "</b>" + code
 		}
+	}
+	raidPlayers = []RaidPlayer{}
+	db.Select(&raidPlayers, dbstr, raid, "remote")
+	if len(raidPlayers) > 0 {
 		raidText += "\r\nДостаю:"
 		for _, playerInfo := range raidPlayers {
-			if playerInfo.Role == "remote" {
-				raidText += "\r\n • <b>" + playerInfo.Name + "</b>"
-			}
+			raidText += "\r\n • <b>" + playerInfo.Name + "</b>"
 		}
+	}
+	raidPlayers = []RaidPlayer{}
+	db.Select(&raidPlayers, dbstr, raid, "live")
+	if len(raidPlayers) > 0 {
 		raidText += "\r\nВживую:"
 		for _, playerInfo := range raidPlayers {
-			if playerInfo.Role == "live" {
-				raidText += "\r\n • <b>" + playerInfo.Name + "</b>"
-			}
+			raidText += "\r\n • <b>" + playerInfo.Name + "</b>"
 		}
-
-		if len(nocode) > 0 {
-			raidText += "\r\nНе зарегистрировали свой код:"
-			for _, name := range nocode {
-				raidText += "\r\n • <b>" + name + "</b>"
-			}
-		}
-	} else {
-		raidText += "\r\n ни один игрок пока не присоединился"
 	}
+
+	if noCode && !adminMode {
+		raidText += "\r\n<i>Пропишите ваш код в диалоге с ботом. Код будет виден только автору рейда.</i>"
+	}
+
 	finished, _ := raid.IsFinished()
 	if finished {
 		raidText += "\r\n<b>Голосование закрыто</b>"
@@ -372,9 +359,8 @@ func (raid Raid) CreateUserInfo(user User) {
 }
 
 //UpdateUserInfo function
-func (raid Raid) UpdateUserInfo(chatID int64, msgID int) {
+func (raid Raid) UpdateUserInfo(chatID int64, msgID int, raidText string) {
 	keyboard := raid.GetKeyboard()
-	raidText := raid.GetText()
 
 	msg := tgbotapi.NewEditMessageText(chatID, msgID, raidText)
 	finished, _ := raid.IsFinished()
@@ -386,9 +372,8 @@ func (raid Raid) UpdateUserInfo(chatID int64, msgID int) {
 }
 
 //UpdatePublicInfo function
-func (raid Raid) UpdatePublicInfo(inlineMsgID string) {
+func (raid Raid) UpdatePublicInfo(inlineMsgID string, raidText string) {
 	keyboard := raid.GetKeyboard()
-	raidText := raid.GetText()
 
 	msg := tgbotapi.NewEditMessageText(0, 0, raidText)
 	msg.InlineMessageID = inlineMsgID

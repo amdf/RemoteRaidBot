@@ -12,24 +12,28 @@ func updateUserInfo() {
 		if errRaids == nil {
 			for _, raid := range raids {
 				if !infoUpdated[raid] {
+					raidText := raid.GetText()
+
 					//first, update admin info
 					raid.UpdateRaidAdminInfo()
+
 					//second, update all other chats
 					var messages []ChatAndMessage
 					err := db.Select(&messages, "SELECT chat_id, msg_id FROM chats WHERE raid_id = $1", raid)
 
 					if err == nil {
 						for _, msg := range messages {
-							raid.UpdateUserInfo(msg.ChatID, msg.MsgID)
+							raid.UpdateUserInfo(msg.ChatID, msg.MsgID, raidText)
 						}
 					}
+
 					//third, update public chat messages
 					var groupMessages []string
 					err = db.Select(&groupMessages, "SELECT inline_msg_id FROM groupmessages WHERE raid_id = $1", raid)
 
 					if err == nil {
 						for _, inlineMsgID := range groupMessages {
-							raid.UpdatePublicInfo(inlineMsgID)
+							raid.UpdatePublicInfo(inlineMsgID, raidText)
 						}
 					}
 					finished, _ := raid.IsFinished()

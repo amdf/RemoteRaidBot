@@ -49,6 +49,7 @@ func (userID User) SetName(name string) {
 	} else {
 		str := `UPDATE players SET pogoname = $1 where user_id = $2`
 		db.Exec(str, name, userID)
+		userID.updateRaids()
 	}
 }
 
@@ -71,7 +72,15 @@ func (userID User) SetCode(pogoCode string) bool {
 	str := `UPDATE players SET pogocode = $1 where user_id = $2`
 	db.Exec(str, pogoCode, userID)
 
+	userID.updateRaids()
+
 	return (len(digitsOnly) == 12)
+}
+
+//GetRaids function
+func (userID User) GetRaids() (raids []Raid, err error) {
+	err = db.Select(&raids, "SELECT DISTINCT raid_id FROM votes WHERE user_id = $1", userID)
+	return
 }
 
 //GetCode - pokemon go friend code
@@ -95,6 +104,25 @@ func (userID User) GetCode() (result string) {
 	return
 }
 
+//GetName - registered user name
+func (userID User) GetName() (result string) {
+
+	rows, err := db.Query("SELECT pogoname FROM players WHERE user_id = $1", userID)
+
+	if err == nil {
+		if rows.Next() {
+			err = rows.Scan(&result)
+		}
+		rows.Close()
+	}
+
+	if "" == result {
+		result = fmt.Sprintf("user%d", userID)
+	}
+
+	return
+}
+
 //Unregister function
 func (userID User) Unregister() {
 	str := `DELETE FROM players WHERE user_id = $1`
@@ -106,6 +134,22 @@ func (userID User) Unregister() {
 func (userID User) EnableNotifications(enable bool) {
 	str := `UPDATE players SET notif = $1 WHERE user_id = $2`
 	db.Exec(str, enable, userID)
+}
+
+func (userID User) updateRaids() {
+	raids, err := userID.GetRaids()
+	if err == nil {
+		for _, r := range raids {
+			infoUpdated[r] = false
+		}
+	}
+}
+
+//DeleteCode function
+func (userID User) DeleteCode() {
+	str := `UPDATE players SET pogocode = NULL WHERE user_id = $1`
+	db.Exec(str, userID)
+	userID.updateRaids()
 }
 
 //Vote function

@@ -23,6 +23,12 @@ func removePreviousRequests(user User) {
 func processCommandWithArgs(userID User, chatID *int64, msgID *int, inlineMsgID string, cmdArgs []string) {
 
 	switch cmdArgs[0] {
+	case "/start":
+		removePreviousRequests(userID)
+
+		if nil != chatID {
+			menuSettings(userID, *chatID)
+		}
 	case "/raidstart":
 		if msgID != nil {
 			r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
@@ -66,7 +72,12 @@ func processCommandWithArgs(userID User, chatID *int64, msgID *int, inlineMsgID 
 		r, err := strconv.ParseInt(cmdArgs[1], 10, 32)
 		if err == nil {
 			raid := Raid(r)
-			userID.Vote(raid, "invite")
+			adminID, err2 := raid.GetAdminUserID()
+			if err2 == nil {
+				if adminID != userID {
+					userID.Vote(raid, "invite")
+				}
+			}
 			raid.RegisterGroupMessageForStatusUpdates(inlineMsgID)
 		} else {
 			if nil != chatID {
@@ -149,6 +160,11 @@ func processCommand(userID User, chatID *int64, msgID *int, inlineMsgID string, 
 		if nil != chatID {
 			sender.SendText(*chatID, "Введите код дружбы из Pokemon Go (12 цифр):")
 			requestPogoCode[userID] = true
+		}
+	case "/deletecode":
+		userID.DeleteCode()
+		if nil != chatID {
+			sender.SendText(*chatID, "Ваш код дружбы удалён.")
 		}
 	case "/notif on":
 		userID.EnableNotifications(true)
@@ -241,8 +257,27 @@ func processAnswer(userID User, chatID int64, msgID *int, cmdText string) bool {
 	return false
 }
 
+func showLink(queryID string) {
+
+	//article := tgbotapi.NewInlineQueryResultArticle(queryID, "Разместить", "22")
+
+	inlineConf := tgbotapi.InlineConfig{
+		InlineQueryID: queryID,
+		IsPersonal:    true,
+		CacheTime:     0,
+		//Results:           []interface{}{article},
+		SwitchPMText:      "Открыть диалог с ботом",
+		SwitchPMParameter: "0",
+	}
+
+	if _, err := bot.AnswerInlineQuery(inlineConf); err != nil {
+		log.Println(err)
+	}
+}
+
 func processInlineQuery(queryID string, queryText string) {
 	if 0 == len(queryText) {
+		showLink(queryID)
 		return
 	}
 	r, err := strconv.ParseInt(queryText, 10, 32)
