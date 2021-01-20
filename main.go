@@ -90,6 +90,7 @@ func main() {
 	sender.Init(bot)
 
 	go updateUserInfo()
+	initialUpdateRaids()
 
 	for update := range updates {
 		if update.CallbackQuery != nil && nil != update.CallbackQuery.From {

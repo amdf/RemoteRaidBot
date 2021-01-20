@@ -139,8 +139,8 @@ func (userID User) EnableNotifications(enable bool) {
 func (userID User) updateRaids() {
 	raids, err := userID.GetRaids()
 	if err == nil {
-		for _, r := range raids {
-			infoUpdated[r] = false
+		for _, raid := range raids {
+			chRaids <- raid
 		}
 	}
 }
@@ -176,7 +176,7 @@ func (userID User) Vote(raid Raid, role string) {
 
 	if changed {
 		log.Println("changed")
-		infoUpdated[raid] = false
+		chRaids <- raid
 	} else {
 		log.Println("not changed")
 	}

@@ -1,53 +1,50 @@
 package main
 
-import (
-	"time"
-)
+var chRaids = make(chan Raid, 100)
+
+func initialUpdateRaids() {
+	var raids []Raid
+
+	errRaids := db.Select(&raids, "SELECT DISTINCT raid_id FROM raids")
+	if errRaids == nil {
+		for _, raid := range raids {
+			chRaids <- raid
+		}
+	}
+}
 
 func updateUserInfo() {
-	for {
-		var raids []Raid
+	for raid := range chRaids {
+		raidText := raid.GetText()
 
-		errRaids := db.Select(&raids, "SELECT DISTINCT raid_id FROM raids")
-		if errRaids == nil {
-			for _, raid := range raids {
-				if !infoUpdated[raid] {
-					raidText := raid.GetText()
+		//first, update admin info
+		raid.UpdateRaidAdminInfo()
 
-					//first, update admin info
-					raid.UpdateRaidAdminInfo()
+		//second, update all other chats
+		var messages []ChatAndMessage
+		err := db.Select(&messages, "SELECT chat_id, msg_id FROM chats WHERE raid_id = $1", raid)
 
-					//second, update all other chats
-					var messages []ChatAndMessage
-					err := db.Select(&messages, "SELECT chat_id, msg_id FROM chats WHERE raid_id = $1", raid)
-
-					if err == nil {
-						for _, msg := range messages {
-							raid.UpdateUserInfo(msg.ChatID, msg.MsgID, raidText)
-						}
-					}
-
-					//third, update public chat messages
-					var groupMessages []string
-					err = db.Select(&groupMessages, "SELECT inline_msg_id FROM groupmessages WHERE raid_id = $1", raid)
-
-					if err == nil {
-						for _, inlineMsgID := range groupMessages {
-							raid.UpdatePublicInfo(inlineMsgID, raidText)
-						}
-					}
-					finished, _ := raid.IsFinished()
-					if finished {
-						raid.Delete()
-						delete(infoUpdated, raid)
-					}
-					infoUpdated[raid] = true
-				}
+		if err == nil {
+			for _, msg := range messages {
+				raid.UpdateUserInfo(msg.ChatID, msg.MsgID, raidText)
 			}
 		}
-		time.Sleep(time.Second)
-	}
 
+		//third, update public chat messages
+		var groupMessages []string
+		err = db.Select(&groupMessages, "SELECT inline_msg_id FROM groupmessages WHERE raid_id = $1", raid)
+
+		if err == nil {
+			for _, inlineMsgID := range groupMessages {
+				raid.UpdatePublicInfo(inlineMsgID, raidText)
+			}
+		}
+		finished, _ := raid.IsFinished()
+		if finished {
+			raid.Delete()
+
+		}
+	}
 }
 
 //GetAdminChats returns admin's chat IDs (for active raids)

@@ -13,8 +13,6 @@ const (
 	errRaidNotActive = "raid has not started yet"
 )
 
-var infoUpdated = make(map[Raid]bool)
-
 //Raid - Pokemon Go Raid
 type Raid int
 
@@ -174,8 +172,7 @@ func (raid Raid) Delete() {
 func (raid Raid) Finish() {
 	str := `UPDATE raids SET finished = true WHERE raid_id = $1`
 	db.Exec(str, raid)
-
-	infoUpdated[raid] = false
+	chRaids <- raid
 }
 
 //IsFinished function

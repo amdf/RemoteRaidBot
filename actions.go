@@ -128,7 +128,9 @@ func processCommandWithArgs(userID User, chatID *int64, msgID *int, inlineMsgID 
 }
 
 func processCommand(userID User, chatID *int64, msgID *int, inlineMsgID string, cmdText string) {
-
+	if 0 == len(cmdText) {
+		return
+	}
 	switch cmdText {
 	case "/start":
 		removePreviousRequests(userID)
